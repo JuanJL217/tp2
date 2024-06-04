@@ -17,14 +17,17 @@ const (
 	PARAMETRO_VER_MAS_VISITADOS string = "ver_mas_visitados"
 	// _255_AL_CUBO                int    = 16581375
 	// _255_AL_CUADRADO            int    = 65025
-	PARAMETRO_FUNCION int    = 0
-	VER_IP            int    = 0
-	VER_ZONA_HORARIA  int    = 1
-	VER_METODO        int    = 2
-	VER_URL           int    = 3
-	PARAMETRO_ARCHIVO int    = 0
-	LAYOUT_PARSE      string = "2022-12-18T17:55:00-00:00"
-	LAYOUT_PARSE2     string = "2006-01-02T15:04:05-07:00"
+	IP_DESDE           int    = 1
+	IP_HASTA           int    = 2
+	PARAMETRO_CANTIDAD int    = 1
+	PARAMETRO_FUNCION  int    = 0
+	VER_IP             int    = 0
+	VER_ZONA_HORARIA   int    = 1
+	VER_METODO         int    = 2
+	VER_URL            int    = 3
+	PARAMETRO_ARCHIVO  int    = 0
+	LAYOUT_PARSE       string = "2022-12-18T17:55:00-00:00"
+	LAYOUT_PARSE2      string = "2006-01-02T15:04:05-07:00"
 )
 
 func comparacionNumerica(a, b uint32) int {
@@ -43,12 +46,12 @@ type informacionUsuario struct {
 }
 
 type informacionInterfaz struct {
-	informacionIP   *TDADiccionario.DiccionarioOrdenado[uint32, informacionUsuario]
-	informacionUrls *TDADiccionario.Diccionario[string, int]
+	informacionIP   TDADiccionario.DiccionarioOrdenado[uint32, informacionUsuario]
+	informacionUrls TDADiccionario.Diccionario[string, int]
 }
 
 func CrearInformacion(abb TDADiccionario.DiccionarioOrdenado[uint32, informacionUsuario], dic TDADiccionario.Diccionario[string, int]) EjecucionArchivos {
-	return informacionInterfaz{&abb, &dic}
+	return &informacionInterfaz{abb, dic}
 }
 
 // AgregarArchivo implements EjecucionArchivos.
@@ -68,18 +71,18 @@ func (info informacionInterfaz) AgregarArchivo(ruta string) {
 			IP:     lineaInformacion[VER_IP],
 			tiempo: lineaInformacion[VER_ZONA_HORARIA],
 		}
-		contabilizarURLs(lineaInformacion[VER_URL], *info.informacionUrls)
-		(*info.informacionIP).Guardar(valorNumericoIP, informacionIP)
+		info.contabilizarURLs(lineaInformacion[VER_URL])
+		info.informacionIP.Guardar(valorNumericoIP, informacionIP)
 	}
 }
 
-// VerMasVisitados implements EjecucionArchivos.
-func (info informacionInterfaz) VerMasVisitados(int) {
+// VerVisitantes implements EjecucionArchivos.
+func (info informacionInterfaz) VerVisitantes(desdeIP string, hastaIP string) {
 	panic("unimplemented")
 }
 
-// VerVisitantes implements EjecucionArchivos.
-func (info informacionInterfaz) VerVisitantes(string, string) {
+// VerMasVisitados implements EjecucionArchivos.
+func (info informacionInterfaz) VerMasVisitados(topVisitados string) {
 	panic("unimplemented")
 }
 
@@ -88,6 +91,7 @@ func LecturaArchivos() {
 	arbolIP := TDADiccionario.CrearABB[uint32, informacionUsuario](comparacionNumerica)
 	DiccionarioURLs := TDADiccionario.CrearHash[string, int]()
 	informacionGeneral := CrearInformacion(arbolIP, DiccionarioURLs)
+
 	for scanner.Scan() {
 		lineaTexto := scanner.Text()
 		arrayEjecuciones := strings.Split(lineaTexto, ESPACIO_VACIO)
@@ -102,10 +106,10 @@ func LecturaArchivos() {
 				//AgregarArchivo(arrayEjecuciones[PARAMETRO_ARCHIVO], arbolIP, DiccionarioURLs)
 
 			} else if arrayEjecuciones[PARAMETRO_FUNCION] == PARAMETRO_VER_VISITANTES {
-				return
+				informacionGeneral.VerVisitantes(arrayEjecuciones[IP_DESDE], arrayEjecuciones[IP_HASTA])
 
 			} else if arrayEjecuciones[PARAMETRO_FUNCION] == PARAMETRO_VER_MAS_VISITADOS {
-				return
+				informacionGeneral.VerMasVisitados(arrayEjecuciones[PARAMETRO_CANTIDAD])
 
 			}
 		}
@@ -133,11 +137,11 @@ func LecturaArchivos() {
 // 	}
 // }
 
-func contabilizarURLs(urlVisitado string, dicURL TDADiccionario.Diccionario[string, int]) {
-	if dicURL.Pertenece(urlVisitado) {
-		dicURL.Guardar(urlVisitado, dicURL.Obtener(urlVisitado)+1)
+func (info *informacionInterfaz) contabilizarURLs(urlVisitado string) {
+	if info.informacionUrls.Pertenece(urlVisitado) {
+		info.informacionUrls.Guardar(urlVisitado, info.informacionUrls.Obtener(urlVisitado)+1)
 	} else {
-		dicURL.Guardar(urlVisitado, 0)
+		info.informacionUrls.Guardar(urlVisitado, 0)
 	}
 }
 
@@ -150,12 +154,6 @@ func transformarIP(ip string) uint32 {
 	}
 	return uint32(IPint[0]*16777216 + IPint[1]*65536 + IPint[2]*255 + IPint[3])
 }
-
-// type datos struct {
-// 	//una structura para el caso de ataques de denegacion
-// 	ip     string
-// 	tiempo []string
-// }
 
 // func LeerStdin() {
 // 	lectura := bufio.NewScanner(os.Stdin)

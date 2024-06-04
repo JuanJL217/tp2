@@ -8,5 +8,5 @@ type EjecucionArchivos interface {
 	VerVisitantes(string, string)
 
 	// Se lista los N recursos más visitador
-	VerMasVisitados(int)
+	VerMasVisitados(string)
 }
