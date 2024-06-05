@@ -45,17 +45,17 @@ type informacionUsuario struct {
 	// Poner una funcion para detectar DoS
 }
 
-type informacionInterfaz struct {
+type informacionGeneral struct {
 	informacionIP   TDADiccionario.DiccionarioOrdenado[string, *informacionUsuario]
 	informacionUrls TDADiccionario.Diccionario[string, int]
 }
 
 func CrearInformacionArchivos() EjecucionArchivos {
-	return &informacionInterfaz{TDADiccionario.CrearABB[string, *informacionUsuario](compararIPs), TDADiccionario.CrearHash[string, int]()}
+	return &informacionGeneral{TDADiccionario.CrearABB[string, *informacionUsuario](compararIPs), TDADiccionario.CrearHash[string, int]()}
 }
 
 // AgregarArchivo implements EjecucionArchivos.
-func (info informacionInterfaz) AgregarArchivo(ruta string) {
+func (info informacionGeneral) AgregarArchivo(ruta string) {
 	archivo, err := os.Open(ruta)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error en comando "+_PARAMETRO_ENTRADA_AGREGAR)
@@ -76,7 +76,7 @@ func (info informacionInterfaz) AgregarArchivo(ruta string) {
 	}
 }
 
-func (info informacionInterfaz) VerVisitantes(desdeIP string, hastaIP string) {
+func (info informacionGeneral) VerVisitantes(desdeIP string, hastaIP string) {
 	iterador := info.informacionIP.IteradorRango(&desdeIP, &hastaIP)
 	for iterador.HaySiguiente() {
 		ip, _ := iterador.VerActual()
@@ -86,7 +86,7 @@ func (info informacionInterfaz) VerVisitantes(desdeIP string, hastaIP string) {
 	fmt.Printf("OK")
 }
 
-func (info informacionInterfaz) VerMasVisitados(topVisitados string) {
+func (info informacionGeneral) VerMasVisitados(topVisitados string) {
 	// Tengo que ver si hago la ejecucion acá o cuando lea el archivo
 	// Como ya tengo el diccionario en contabilizarURLs(), tengo que aquí ordenarnos con un counting sort
 	// Lo que ordenaré, será la cantidad de visitados que tenga cada URL
@@ -104,11 +104,11 @@ func (info informacionInterfaz) VerMasVisitados(topVisitados string) {
 	fmt.Printf("OK")
 }
 
-func (info informacionInterfaz) ordenamientoUrlVisitados(pila TDAPila.Pila[string]) {
+func (info informacionGeneral) ordenamientoUrlVisitados(pila TDAPila.Pila[string]) {
 	//Hacer cositas con el diccionario
 }
 
-func (info *informacionInterfaz) contabilizarURLs(urlVisitado string) {
+func (info informacionGeneral) contabilizarURLs(urlVisitado string) {
 	if info.informacionUrls.Pertenece(urlVisitado) {
 		info.informacionUrls.Guardar(urlVisitado, info.informacionUrls.Obtener(urlVisitado)+1)
 	} else {
