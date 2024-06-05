@@ -15,10 +15,12 @@ const (
 	_ESPACIO_VACIO             string = " "
 	_SEPARADOR_DIGITOS_IP      string = "."
 	_PARAMETRO_ENTRADA_AGREGAR string = "agregar_archivo"
+	_ERROR                     string = "Error en comando "
 	_VER_IP                    int    = 0
 	_VER_ZONA_HORARIA          int    = 1
 	_VER_METODO                int    = 2
 	_VER_URL                   int    = 3
+	_MAx_URLS_VISITADO         int    = 10
 	_LAYOUT_PARSE              string = "2022-12-18T17:55:00-00:00"
 	_LAYOUT_PARSE2             string = "2006-01-02T15:04:05-07:00"
 )
@@ -58,7 +60,7 @@ func CrearInformacionArchivos() EjecucionArchivos {
 func (info informacionGeneral) AgregarArchivo(ruta string) {
 	archivo, err := os.Open(ruta)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error en comando "+_PARAMETRO_ENTRADA_AGREGAR)
+		fmt.Fprintf(os.Stderr, _ERROR+_PARAMETRO_ENTRADA_AGREGAR) // importar del main
 	}
 	defer archivo.Close()
 
@@ -70,7 +72,7 @@ func (info informacionGeneral) AgregarArchivo(ruta string) {
 			tiempo: lineaInformacion[_VER_ZONA_HORARIA],
 			urls:   lineaInformacion[_VER_URL],
 		}
-		info.contabilizarURLs(lineaInformacion[_VER_URL])
+		contabilizarURLs(lineaInformacion[_VER_URL], info)
 		//info.detectarDoS()
 		info.informacionIP.Guardar(lineaInformacion[_VER_IP], &informacionIP)
 	}
@@ -86,7 +88,11 @@ func (info informacionGeneral) VerVisitantes(desdeIP string, hastaIP string) {
 	fmt.Printf("OK")
 }
 
-func (info informacionGeneral) VerMasVisitados(topVisitados string) {
+func (info informacionGeneral) VerMasVisitados(mostrarCantidadUrls string) {
+	cantidadTotal, err := strconv.Atoi(mostrarCantidadUrls)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, _ERROR+"ver_mas_visitados") // importar del main
+	}
 	// Tengo que ver si hago la ejecucion acá o cuando lea el archivo
 	// Como ya tengo el diccionario en contabilizarURLs(), tengo que aquí ordenarnos con un counting sort
 	// Lo que ordenaré, será la cantidad de visitados que tenga cada URL
@@ -95,20 +101,20 @@ func (info informacionGeneral) VerMasVisitados(topVisitados string) {
 	// Desapilando lo ltimo que apilé
 	pila := TDAPila.CrearPilaDinamica[string]() //String no va a ser, tiene que ser una estructura
 	// EjecuionDeOrdenamiento
-	info.ordenamientoUrlVisitados(pila)
+	ordenamientoUrlVisitados(pila, info)
 	contador := 0
-	for !pila.EstaVacia() || contador <= 10 {
+	for !pila.EstaVacia() && contador <= cantidadTotal {
 		fmt.Printf("\t" + pila.Desapilar())
 		contador++
 	}
 	fmt.Printf("OK")
 }
 
-func (info informacionGeneral) ordenamientoUrlVisitados(pila TDAPila.Pila[string]) {
-	//Hacer cositas con el diccionario
+func ordenamientoUrlVisitados(pila TDAPila.Pila[string], info informacionGeneral) {
+	// Hacer cositas
 }
 
-func (info informacionGeneral) contabilizarURLs(urlVisitado string) {
+func contabilizarURLs(urlVisitado string, info informacionGeneral) {
 	if info.informacionUrls.Pertenece(urlVisitado) {
 		info.informacionUrls.Guardar(urlVisitado, info.informacionUrls.Obtener(urlVisitado)+1)
 	} else {

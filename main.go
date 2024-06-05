@@ -14,6 +14,7 @@ const (
 	_PARAMETRO_ENTRADA_AGREGAR   string = "agregar_archivo"
 	_PARAMETRO_VER_VISITANTES    string = "ver_visitantes"
 	_PARAMETRO_VER_MAS_VISITADOS string = "ver_mas_visitados"
+	ERROR                        string = "Error en comando: "
 	_PARAMETRO_FUNCION           int    = 0
 	_PARAMETRO_ARCHIVO           int    = 0
 	_IP_DESDE                    int    = 1
@@ -30,7 +31,7 @@ func ProcesarArchivos() {
 		arrayEjecuciones := strings.Split(lineaTexto, _ESPACIO_VACIO)
 
 		if len(arrayEjecuciones) == 1 {
-			fmt.Fprintf(os.Stderr, "Error en comando: "+arrayEjecuciones[_PARAMETRO_FUNCION])
+			fmt.Fprintf(os.Stderr, ERROR+arrayEjecuciones[_PARAMETRO_FUNCION])
 			return
 
 		} else {
