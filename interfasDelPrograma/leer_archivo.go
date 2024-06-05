@@ -7,135 +7,106 @@ import (
 	"strconv"
 	"strings"
 	TDADiccionario "tdas/diccionario"
+	TDAPila "tdas/pila"
+	//TDAcola "tdas/cola"
 )
 
 const (
-	ESPACIO_VACIO               string = " "
-	SEPARADOR_CODIGO            string = "."
-	PARAMETRO_ENTRADA_AGREGAR   string = "agregar_archivo"
-	PARAMETRO_VER_VISITANTES    string = "ver_visitantes"
-	PARAMETRO_VER_MAS_VISITADOS string = "ver_mas_visitados"
-	// _255_AL_CUBO                int    = 16581375
-	// _255_AL_CUADRADO            int    = 65025
-	IP_DESDE           int    = 1
-	IP_HASTA           int    = 2
-	PARAMETRO_CANTIDAD int    = 1
-	PARAMETRO_FUNCION  int    = 0
-	VER_IP             int    = 0
-	VER_ZONA_HORARIA   int    = 1
-	VER_METODO         int    = 2
-	VER_URL            int    = 3
-	PARAMETRO_ARCHIVO  int    = 0
-	LAYOUT_PARSE       string = "2022-12-18T17:55:00-00:00"
-	LAYOUT_PARSE2      string = "2006-01-02T15:04:05-07:00"
+	_ESPACIO_VACIO             string = " "
+	_SEPARADOR_DIGITOS_IP      string = "."
+	_PARAMETRO_ENTRADA_AGREGAR string = "agregar_archivo"
+	_VER_IP                    int    = 0
+	_VER_ZONA_HORARIA          int    = 1
+	_VER_METODO                int    = 2
+	_VER_URL                   int    = 3
+	_LAYOUT_PARSE              string = "2022-12-18T17:55:00-00:00"
+	_LAYOUT_PARSE2             string = "2006-01-02T15:04:05-07:00"
 )
 
-func comparacionNumerica(a, b uint32) int {
-	if a > b {
-		return 1
-	}
-	if a < b {
-		return -1
+func compararIPs(IP1, IP2 string) int {
+	arrayIP1 := strings.Split(IP1, _SEPARADOR_DIGITOS_IP)
+	arrayIP2 := strings.Split(IP2, _SEPARADOR_DIGITOS_IP)
+	for i := 0; i < 4; i++ {
+		intIP1, _ := strconv.Atoi(arrayIP1[i])
+		intIP2, _ := strconv.Atoi(arrayIP2[i])
+		if intIP1 > intIP2 {
+			return 1
+		}
+		if intIP2 > intIP1 {
+			return -1
+		}
 	}
 	return 0
 }
 
 type informacionUsuario struct {
-	IP     string
-	tiempo string
+	tiempo string //Aquí haré una cola
+	urls   string //Aquí también haré otra cola, creo
+	// Poner una funcion para detectar DoS
 }
 
 type informacionInterfaz struct {
-	informacionIP   TDADiccionario.DiccionarioOrdenado[uint32, informacionUsuario]
+	informacionIP   TDADiccionario.DiccionarioOrdenado[string, *informacionUsuario]
 	informacionUrls TDADiccionario.Diccionario[string, int]
 }
 
-func CrearInformacion(abb TDADiccionario.DiccionarioOrdenado[uint32, informacionUsuario], dic TDADiccionario.Diccionario[string, int]) EjecucionArchivos {
-	return &informacionInterfaz{abb, dic}
+func CrearInformacionArchivos() EjecucionArchivos {
+	return &informacionInterfaz{TDADiccionario.CrearABB[string, *informacionUsuario](compararIPs), TDADiccionario.CrearHash[string, int]()}
 }
 
 // AgregarArchivo implements EjecucionArchivos.
 func (info informacionInterfaz) AgregarArchivo(ruta string) {
 	archivo, err := os.Open(ruta)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error en comando "+PARAMETRO_ENTRADA_AGREGAR)
+		fmt.Fprintf(os.Stderr, "Error en comando "+_PARAMETRO_ENTRADA_AGREGAR)
 	}
 	defer archivo.Close()
 
 	scanner := bufio.NewScanner(archivo)
 	for scanner.Scan() {
 		lineaTexto := scanner.Text()
-		lineaInformacion := strings.Split(lineaTexto, ESPACIO_VACIO)
-		valorNumericoIP := transformarIP(lineaInformacion[VER_IP])
+		lineaInformacion := strings.Split(lineaTexto, _ESPACIO_VACIO)
 		informacionIP := informacionUsuario{
-			IP:     lineaInformacion[VER_IP],
-			tiempo: lineaInformacion[VER_ZONA_HORARIA],
+			tiempo: lineaInformacion[_VER_ZONA_HORARIA],
+			urls:   lineaInformacion[_VER_URL],
 		}
-		info.contabilizarURLs(lineaInformacion[VER_URL])
-		info.informacionIP.Guardar(valorNumericoIP, informacionIP)
+		info.contabilizarURLs(lineaInformacion[_VER_URL])
+		//info.detectarDoS()
+		info.informacionIP.Guardar(lineaInformacion[_VER_IP], &informacionIP)
 	}
 }
 
-// VerVisitantes implements EjecucionArchivos.
 func (info informacionInterfaz) VerVisitantes(desdeIP string, hastaIP string) {
-	panic("unimplemented")
-}
-
-// VerMasVisitados implements EjecucionArchivos.
-func (info informacionInterfaz) VerMasVisitados(topVisitados string) {
-	panic("unimplemented")
-}
-
-func LecturaArchivos() {
-	scanner := bufio.NewScanner(os.Stdin)
-	arbolIP := TDADiccionario.CrearABB[uint32, informacionUsuario](comparacionNumerica)
-	DiccionarioURLs := TDADiccionario.CrearHash[string, int]()
-	informacionGeneral := CrearInformacion(arbolIP, DiccionarioURLs)
-
-	for scanner.Scan() {
-		lineaTexto := scanner.Text()
-		arrayEjecuciones := strings.Split(lineaTexto, ESPACIO_VACIO)
-
-		if len(arrayEjecuciones) == 1 {
-			fmt.Fprintf(os.Stderr, "Error en comando: "+arrayEjecuciones[PARAMETRO_FUNCION])
-			return
-
-		} else {
-			if arrayEjecuciones[PARAMETRO_FUNCION] == PARAMETRO_ENTRADA_AGREGAR {
-				informacionGeneral.AgregarArchivo(arrayEjecuciones[PARAMETRO_ARCHIVO])
-				//AgregarArchivo(arrayEjecuciones[PARAMETRO_ARCHIVO], arbolIP, DiccionarioURLs)
-
-			} else if arrayEjecuciones[PARAMETRO_FUNCION] == PARAMETRO_VER_VISITANTES {
-				informacionGeneral.VerVisitantes(arrayEjecuciones[IP_DESDE], arrayEjecuciones[IP_HASTA])
-
-			} else if arrayEjecuciones[PARAMETRO_FUNCION] == PARAMETRO_VER_MAS_VISITADOS {
-				informacionGeneral.VerMasVisitados(arrayEjecuciones[PARAMETRO_CANTIDAD])
-
-			}
-		}
+	iterador := info.informacionIP.IteradorRango(&desdeIP, &hastaIP)
+	for iterador.HaySiguiente() {
+		ip, _ := iterador.VerActual()
+		fmt.Printf("\t" + ip)
+		iterador.Siguiente()
 	}
+	fmt.Printf("OK")
 }
 
-// func AgregarArchivo(ruta string, arbolIP TDADiccionario.DiccionarioOrdenado[uint32, informacionUsuario], dicionarioURL TDADiccionario.Diccionario[string, int]) {
-// 	archivo, err := os.Open(ruta)
-// 	if err != nil {
-// 		fmt.Fprintf(os.Stderr, "Error en comando "+PARAMETRO_ENTRADA_AGREGAR)
-// 	}
-// 	defer archivo.Close()
+func (info informacionInterfaz) VerMasVisitados(topVisitados string) {
+	// Tengo que ver si hago la ejecucion acá o cuando lea el archivo
+	// Como ya tengo el diccionario en contabilizarURLs(), tengo que aquí ordenarnos con un counting sort
+	// Lo que ordenaré, será la cantidad de visitados que tenga cada URL
+	// Como se ordenan de menor a mayor, pongo en una pila cada elemento
+	// Y hare un ciclo for hasta que la Pila esté vacia, o cuanto el contador haya llegado a 10
+	// Desapilando lo ltimo que apilé
+	pila := TDAPila.CrearPilaDinamica[string]() //String no va a ser, tiene que ser una estructura
+	// EjecuionDeOrdenamiento
+	info.ordenamientoUrlVisitados(pila)
+	contador := 0
+	for !pila.EstaVacia() || contador <= 10 {
+		fmt.Printf("\t" + pila.Desapilar())
+		contador++
+	}
+	fmt.Printf("OK")
+}
 
-// 	scanner := bufio.NewScanner(archivo)
-// 	for scanner.Scan() {
-// 		lineaTexto := scanner.Text()
-// 		lineaInformacion := strings.Split(lineaTexto, ESPACIO_VACIO)
-// 		valorNumericoIP := transformarIP(lineaInformacion[VER_IP])
-// 		informacionIP := informacionUsuario{
-// 			IP:     lineaInformacion[VER_IP],
-// 			tiempo: lineaInformacion[VER_ZONA_HORARIA],
-// 		}
-// 		contabilizarURLs(lineaInformacion[VER_URL], dicionarioURL)
-// 		arbolIP.Guardar(valorNumericoIP, informacionIP)
-// 	}
-// }
+func (info informacionInterfaz) ordenamientoUrlVisitados(pila TDAPila.Pila[string]) {
+	//Hacer cositas con el diccionario
+}
 
 func (info *informacionInterfaz) contabilizarURLs(urlVisitado string) {
 	if info.informacionUrls.Pertenece(urlVisitado) {
@@ -143,16 +114,6 @@ func (info *informacionInterfaz) contabilizarURLs(urlVisitado string) {
 	} else {
 		info.informacionUrls.Guardar(urlVisitado, 0)
 	}
-}
-
-func transformarIP(ip string) uint32 {
-	IPstring := strings.Split(ip, SEPARADOR_CODIGO)
-	IPint := make([]int, 4)
-	for i := 0; i < 4; i++ {
-		valor, _ := strconv.Atoi(IPstring[i])
-		IPint[i] = valor
-	}
-	return uint32(IPint[0]*16777216 + IPint[1]*65536 + IPint[2]*255 + IPint[3])
 }
 
 // func LeerStdin() {
