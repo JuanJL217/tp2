@@ -11,17 +11,20 @@ import (
 )
 
 const (
-	_ESPACIO_VACIO             string = " "
-	_SEPARADOR_DIGITOS_IP      string = "."
-	_PARAMETRO_ENTRADA_AGREGAR string = "agregar_archivo"
-	_ERROR                     string = "Error en comando "
-	_VER_IP                    int    = 0
-	_VER_ZONA_HORARIA          int    = 1
-	_VER_METODO                int    = 2
-	_VER_URL                   int    = 3
-	_MAx_URLS_VISITADO         int    = 10
-	_LAYOUT_PARSE              string = "2022-12-18T17:55:00-00:00"
-	_LAYOUT_PARSE2             string = "2006-01-02T15:04:05-07:00"
+	_ESPACIO_VACIO             string  = " "
+	_SEPARADOR_DIGITOS_IP      string  = "."
+	_PARAMETRO_ENTRADA_AGREGAR string  = "agregar_archivo"
+	_ERROR                     string  = "Error en comando "
+	_CANT_MINIMA_DOS           int     = 5
+	_SEGUNDO_MAXIMO            float64 = 0.2
+	_DATOS_INSUFICIENTES       float64 = 0.0
+	_VALOR_INICIAL             int     = 0
+	_VER_IP                    int     = 0
+	_VER_ZONA_HORARIA          int     = 1
+	_VER_URL                   int     = 3
+	_MAx_URLS_VISITADO         int     = 10
+	_LAYOUT_PARSE              string  = "2022-12-18T17:55:00-00:00"
+	_LAYOUT_PARSE2             string  = "2006-01-02T15:04:05-07:00"
 )
 
 func compararIPs(IP1, IP2 string) int {
@@ -41,25 +44,25 @@ func compararIPs(IP1, IP2 string) int {
 }
 
 type informacionSesionUsuario struct {
-	tiempo TDADiccionario.Diccionario[string, TDAPila.Pila[[]string]]
+	tiempo TDADiccionario.Diccionario[string, *TDAPila.Pila[[]string]]
 	urls   TDADiccionario.Diccionario[string, int]
 }
 
 type informacionGeneral struct {
-	informacionIPs  TDADiccionario.DiccionarioOrdenado[string, informacionSesionUsuario]
+	informacionIPs  TDADiccionario.DiccionarioOrdenado[string, *informacionSesionUsuario]
 	informacionUrls TDADiccionario.Diccionario[string, int]
 }
 
-func crearNuevoUsuario() informacionSesionUsuario {
-	return informacionSesionUsuario{
-		TDADiccionario.CrearHash[string, TDAPila.Pila[[]string]](),
+func crearNuevoUsuario() *informacionSesionUsuario {
+	return &informacionSesionUsuario{
+		TDADiccionario.CrearHash[string, *TDAPila.Pila[[]string]](),
 		TDADiccionario.CrearHash[string, int](),
 	}
 }
 
 func CrearInformacionArchivos() EjecucionArchivos {
-	return informacionGeneral{
-		TDADiccionario.CrearABB[string, informacionSesionUsuario](compararIPs),
+	return &informacionGeneral{
+		TDADiccionario.CrearABB[string, *informacionSesionUsuario](compararIPs),
 		TDADiccionario.CrearHash[string, int](),
 	}
 }
@@ -77,28 +80,25 @@ func (info informacionGeneral) AgregarArchivo(ruta string) {
 		lineaTexto := scanner.Text()
 		lineaInformacion := strings.Split(lineaTexto, _ESPACIO_VACIO)
 		guardarInformacion(lineaInformacion[_VER_IP], lineaInformacion[_VER_URL], lineaInformacion[_VER_ZONA_HORARIA], info)
-		detectarDoS(info)
 	}
 }
 
-func guardarInformacion(IP string, url string, tiempo string, info informacionGeneral) {
+func guardarInformacion(IP, url, tiempo string, info informacionGeneral) {
 	reloj := tranformarTiempo(tiempo)
-	var usuario informacionSesionUsuario
 	if !info.informacionIPs.Pertenece(IP) {
-		usuario = crearNuevoUsuario()
+		usuario := crearNuevoUsuario()
 		pilaTiempos := TDAPila.CrearPilaDinamica[[]string]()
 		pilaTiempos.Apilar(reloj)
-		usuario.tiempo.Guardar(url, pilaTiempos)
-		usuario.urls.Guardar(url, 0)
+		usuario.tiempo.Guardar(url, &pilaTiempos)
+		usuario.urls.Guardar(url, _VALOR_INICIAL)
+		info.informacionIPs.Guardar(IP, usuario)
 	} else {
-		usuario = info.informacionIPs.Obtener(IP)
+		usuario := info.informacionIPs.Obtener(IP)
 		pilaTiempos := usuario.tiempo.Obtener(url)
-		pilaTiempos.Apilar(reloj)
-		usuario.tiempo.Guardar(url, pilaTiempos)
-		usuario.urls.Guardar(url, usuario.urls.Obtener(url)+1)
+		(*pilaTiempos).Apilar(reloj)
+		usuario.urls.Guardar(IP, usuario.urls.Obtener(IP)+1)
+		detectarDoS(usuario, IP, url)
 	}
-	info.informacionIPs.Guardar(IP, usuario) //Quizas si trabajo con punteros a informacionSesionUsuario, no tendria que guardar nuevamente en el ABB,
-	//ya que la modificacion que haga ahí, tendría que guardarse directamente
 	contabilizarURLs(url, info)
 
 	// reloj := tranformarTiempo(tiempo)
@@ -120,8 +120,18 @@ func guardarInformacion(IP string, url string, tiempo string, info informacionGe
 	// contabilizarURLs(url, info)
 }
 
-func detectarDoS(info informacionGeneral) {
+func detectarDoS(usuario *informacionSesionUsuario, IP, url string) {
+	if usuario.urls.Obtener(url) >= _CANT_MINIMA_DOS {
+		segundos := calcularTiempo(usuario, url)
+		if segundos <= _SEGUNDO_MAXIMO {
+			fmt.Println("DoS: " + IP)
+		}
+	}
+}
 
+func calcularTiempo(usuario *informacionSesionUsuario, url string) float64 {
+	// desapilamos y apilamos
+	return _DATOS_INSUFICIENTES
 }
 
 func tranformarTiempo(tiempo string) []string {
@@ -129,7 +139,7 @@ func tranformarTiempo(tiempo string) []string {
 	return []string{tiempo}
 }
 
-func (info informacionGeneral) VerVisitantes(desdeIP string, hastaIP string) {
+func (info informacionGeneral) VerVisitantes(desdeIP, hastaIP string) {
 	iterador := info.informacionIPs.IteradorRango(&desdeIP, &hastaIP)
 	for iterador.HaySiguiente() {
 		ip, _ := iterador.VerActual()
@@ -167,7 +177,7 @@ func ordenamientoUrlVisitados(pila TDAPila.Pila[string], info informacionGeneral
 
 func contabilizarURLs(urlVisitado string, info informacionGeneral) {
 	if !info.informacionUrls.Pertenece(urlVisitado) {
-		info.informacionUrls.Guardar(urlVisitado, 0)
+		info.informacionUrls.Guardar(urlVisitado, _VALOR_INICIAL)
 	} else {
 		info.informacionUrls.Guardar(urlVisitado, info.informacionUrls.Obtener(urlVisitado)+1)
 	}
