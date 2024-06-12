@@ -7,6 +7,6 @@ type EjecucionArchivos interface {
 	// Lista todos los IPs en el rango determinado
 	VerVisitantes(string, string)
 
-	// Se lista los N recursos más visitador
+	//// Se lista los N recursos más visitador
 	VerMasVisitados(string)
 }
