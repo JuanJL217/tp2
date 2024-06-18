@@ -66,35 +66,36 @@ func CrearAnalisisDeArchivos() EjecucionArchivos {
 
 func (info informacionArchivos) AgregarArchivo(ruta string) {
 	DiccDos := TDADiccionario.CrearHash[string, string]()
-	archivo, _ := os.Open(ruta)
-	defer archivo.Close()
-	scanner := bufio.NewScanner(archivo)
-	for scanner.Scan() {
-		lineaTexto := strings.Split(scanner.Text(), _TABULACION)
-		info.almacenarUsuarios(lineaTexto, DiccDos)
-		info.contarSitiosVistados(lineaTexto)
-	}
-	if DiccDos.Cantidad() >= 1 {
-		arrDoS := ordenarDos(DiccDos)
-		for _, IP := range arrDoS {
-			fmt.Println("DoS: " + IP)
+	archivo, err := os.Open(ruta)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, _ERROR+_PARAMETRO_ENTRADA_AGREGAR)
+	} else {
+		defer archivo.Close()
+		scanner := bufio.NewScanner(archivo)
+		for scanner.Scan() {
+			lineaTexto := strings.Split(scanner.Text(), _TABULACION)
+			info.almacenarUsuarios(lineaTexto, DiccDos)
+			info.contarSitiosVistados(lineaTexto)
 		}
+		if DiccDos.Cantidad() >= 1 {
+			arrDoS := ordenarDos(DiccDos)
+			for _, IP := range arrDoS {
+				fmt.Println("DoS: " + IP)
+			}
+		}
+		fmt.Println(_ACEPTADO)
 	}
-	fmt.Println(_ACEPTADO)
 }
 
 func ordenarDos(listadoDicc TDADiccionario.Diccionario[string, string]) []string {
 	arrDoS := make([]string, 0)
-	iter := listadoDicc.Iterador()
-	for iter.HaySiguiente() {
-		IPDoS, _ := iter.VerActual()
-		arrDoS = append(arrDoS, IPDoS)
-		iter.Siguiente()
+	listadoDicc.Iterar(func(IP string, _ string) bool {
+		arrDoS = append(arrDoS, IP)
+		return true
+	})
+	for i := 3; i >= 0; i-- {
+		arrDoS = countingSortIPs(arrDoS, i)
 	}
-	arrDoS = countingSortIPs(arrDoS, 3)
-	arrDoS = countingSortIPs(arrDoS, 2)
-	arrDoS = countingSortIPs(arrDoS, 1)
-	arrDoS = countingSortIPs(arrDoS, 0)
 	return arrDoS
 }
 
@@ -106,18 +107,15 @@ func convertirANumero(array string, posicion int) int {
 }
 
 func countingSortIPs(arrayIPs []string, posicion int) []string {
-
 	frecuencias := make([]int, 256)
 	for _, ipString := range arrayIPs {
 		numero := convertirANumero(ipString, posicion)
 		frecuencias[numero]++
 	}
-
 	sumasSucesivas := make([]int, 256)
 	for i := 1; i < 256; i++ {
 		sumasSucesivas[i] = sumasSucesivas[i-1] + frecuencias[i-1]
 	}
-
 	resultado := make([]string, len(arrayIPs))
 	for _, ipString := range arrayIPs {
 		numero := convertirANumero(ipString, posicion)
@@ -125,38 +123,37 @@ func countingSortIPs(arrayIPs []string, posicion int) []string {
 		resultado[pos] = ipString
 		sumasSucesivas[numero]++
 	}
-
 	return resultado
 }
 
-func (info informacionArchivos) VerMasVisitados(dato string) {
-	mininimo, _ := strconv.Atoi(dato)
-	heap := TDAHeap.CrearHeap[sitiosVistados](compararCantidades)
+func (info informacionArchivos) VerMasVisitados(cantidad string) {
+	cantidadAmostrar, _ := strconv.Atoi(cantidad)
+	ordenUrls := TDAHeap.CrearHeap[sitiosVistados](compararCantidades)
 	info.DiccURL.Iterar(func(clave string, valor int) bool {
-		heap.Encolar(sitiosVistados{Url: clave, Cantidad: valor})
+		ordenUrls.Encolar(sitiosVistados{Url: clave, Cantidad: valor})
 		return true
 	})
-	fmt.Println("Sitios mas visitados:")
-	for i := 0; i < mininimo && !heap.EstaVacia(); i++ {
-		url := heap.Desencolar()
-		fmt.Println(_TABULACION, url.Url, "-", url.Cantidad)
+	fmt.Println("Sitios más visitados:")
+	for i := 0; i < cantidadAmostrar && !ordenUrls.EstaVacia(); i++ {
+		url := ordenUrls.Desencolar()
+		fmt.Println(_TABULACION + url.Url + " - " + strconv.Itoa(url.Cantidad))
 	}
+	fmt.Println(_ACEPTADO)
 }
 
 // Terminado
 func (info informacionArchivos) VerVisitantes(inicio, fin string) {
-	iterRango := info.AbbVisitantes.IteradorRango(&inicio, &fin)
-	for iterRango.HaySiguiente() {
-		clave, _ := iterRango.VerActual()
-		fmt.Println(_TABULACION, clave)
-		iterRango.Siguiente()
-	}
+	fmt.Println("Visitantes:")
+	info.AbbVisitantes.IterarRango(&inicio, &fin, func(IP string, _ bool) bool {
+		fmt.Println(_TABULACION + IP)
+		return true
+	})
+	fmt.Println(_ACEPTADO)
 }
 
 func (info *informacionArchivos) almacenarUsuarios(infoIP []string, diccIPDoS TDADiccionario.Diccionario[string, string]) {
 	if info.DiccIP.Pertenece(infoIP[_VER_IP]) {
-		agregarTiempo(infoIP, info.DiccIP)
-		detectarDoS(infoIP, info.DiccIP, diccIPDoS)
+		agregarTiempo(infoIP, info.DiccIP, diccIPDoS)
 	} else {
 		info.AbbVisitantes.Guardar(infoIP[_VER_IP], true)
 		registroTiempo := TDALista.CrearListaEnlazada[string]()
@@ -165,7 +162,7 @@ func (info *informacionArchivos) almacenarUsuarios(infoIP []string, diccIPDoS TD
 	}
 }
 
-func agregarTiempo(IP []string, diccIP TDADiccionario.Diccionario[string, TDALista.Lista[string]]) {
+func agregarTiempo(IP []string, diccIP TDADiccionario.Diccionario[string, TDALista.Lista[string]], diccIPDoS TDADiccionario.Diccionario[string, string]) {
 	listaTiempos := diccIP.Obtener(IP[_VER_IP])
 	if listaTiempos.Largo() == _CANT_MINIMA_DOS {
 		listaTiempos.BorrarPrimero()
@@ -173,14 +170,15 @@ func agregarTiempo(IP []string, diccIP TDADiccionario.Diccionario[string, TDALis
 	} else {
 		listaTiempos.InsertarUltimo(IP[_VER_ZONA_HORARIA])
 	}
+	detectarDoS(IP, diccIP, diccIPDoS)
 }
 
 func detectarDoS(IP []string, tiempoIP TDADiccionario.Diccionario[string, TDALista.Lista[string]], diccIPDoS TDADiccionario.Diccionario[string, string]) {
 	registroTiempo := tiempoIP.Obtener(IP[_VER_IP])
-	if registroTiempo.Largo() == _CANT_MINIMA_DOS {
+	if registroTiempo.Largo() >= _CANT_MINIMA_DOS {
 		primerTiempo, _ := time.Parse(_LAYOUT_PARSE, registroTiempo.VerPrimero())
 		segundoTiempo, _ := time.Parse(_LAYOUT_PARSE, registroTiempo.VerUltimo())
-		if segundoTiempo.Sub(primerTiempo) <= _SEGUNDO_MAXIMO*time.Second {
+		if segundoTiempo.Sub(primerTiempo) < _SEGUNDO_MAXIMO*time.Second && segundoTiempo.Sub(primerTiempo) >= 0 {
 			diccIPDoS.Guardar(IP[_VER_IP], "Es DoS")
 		}
 	}

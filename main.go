@@ -9,18 +9,17 @@ import (
 )
 
 const (
-	_ESPACIO_VACIO               string = " "
-	_SEPARADOR_CODIGO            string = "."
-	_PARAMETRO_ENTRADA_AGREGAR   string = "agregar_archivo"
-	_PARAMETRO_VER_VISITANTES    string = "ver_visitantes"
-	_PARAMETRO_VER_MAS_VISITADOS string = "ver_mas_visitados"
-	ERROR                        string = "Error en comando: "
-	_PARAMETRO_FUNCION           int    = 0
-	_PARAMETRO_ARCHIVO           int    = 0
-	_IP_DESDE                    int    = 1
-	_IP_HASTA                    int    = 2
-	_PARAMETRO_CANTIDAD          int    = 1
-	pruebas                             = "./pruebas_analog/test05.log"
+	_ESPACIO_VACIO               = " "
+	_SEPARADOR_CODIGO            = "."
+	_PARAMETRO_ENTRADA_AGREGAR   = "agregar_archivo"
+	_PARAMETRO_VER_VISITANTES    = "ver_visitantes"
+	_PARAMETRO_VER_MAS_VISITADOS = "ver_mas_visitados"
+	ERROR                        = "Error en comando "
+	_PARAMETRO_FUNCION           = 0
+	_PARAMETRO_ARCHIVO           = 1
+	_IP_DESDE                    = 1
+	_IP_HASTA                    = 2
+	_PARAMETRO_CANTIDAD          = 1
 )
 
 func ProcesarArchivos() {
@@ -29,24 +28,21 @@ func ProcesarArchivos() {
 
 	for scanner.Scan() {
 		lineaTexto := scanner.Text()
-		arrayEjecuciones := strings.Split(lineaTexto, _ESPACIO_VACIO)
+		arrayTexto := strings.Split(lineaTexto, _ESPACIO_VACIO)
 
-		if len(arrayEjecuciones) == 1 {
-			fmt.Fprintf(os.Stderr, ERROR+arrayEjecuciones[_PARAMETRO_FUNCION])
-			return
+		if len(arrayTexto) == 1 {
+			fmt.Fprintf(os.Stderr, ERROR+arrayTexto[_PARAMETRO_FUNCION])
+		}
 
-		} else {
+		if arrayTexto[_PARAMETRO_FUNCION] == _PARAMETRO_ENTRADA_AGREGAR {
+			informacionGeneral.AgregarArchivo(arrayTexto[_PARAMETRO_ARCHIVO])
 
-			if arrayEjecuciones[_PARAMETRO_FUNCION] == _PARAMETRO_ENTRADA_AGREGAR {
-				informacionGeneral.AgregarArchivo(arrayEjecuciones[_PARAMETRO_ARCHIVO])
+		} else if arrayTexto[_PARAMETRO_FUNCION] == _PARAMETRO_VER_VISITANTES {
+			informacionGeneral.VerVisitantes(arrayTexto[_IP_DESDE], arrayTexto[_IP_HASTA])
 
-			} else if arrayEjecuciones[_PARAMETRO_FUNCION] == _PARAMETRO_VER_VISITANTES {
-				informacionGeneral.VerVisitantes(arrayEjecuciones[_IP_DESDE], arrayEjecuciones[_IP_HASTA])
+		} else if arrayTexto[_PARAMETRO_FUNCION] == _PARAMETRO_VER_MAS_VISITADOS {
+			informacionGeneral.VerMasVisitados(arrayTexto[_PARAMETRO_CANTIDAD])
 
-			} else if arrayEjecuciones[_PARAMETRO_FUNCION] == _PARAMETRO_VER_MAS_VISITADOS {
-				informacionGeneral.VerMasVisitados(arrayEjecuciones[_PARAMETRO_CANTIDAD])
-
-			}
 		}
 	}
 }
