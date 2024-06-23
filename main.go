@@ -30,19 +30,17 @@ func ProcesarArchivos() {
 		lineaTexto := scanner.Text()
 		arrayTexto := strings.Split(lineaTexto, _ESPACIO_VACIO)
 
-		if len(arrayTexto) == 1 {
-			fmt.Fprintf(os.Stderr, ERROR+arrayTexto[_PARAMETRO_FUNCION])
-		}
-
-		if arrayTexto[_PARAMETRO_FUNCION] == _PARAMETRO_ENTRADA_AGREGAR {
+		if arrayTexto[_PARAMETRO_FUNCION] == _PARAMETRO_ENTRADA_AGREGAR && len(arrayTexto) == 2 {
 			informacionGeneral.AgregarArchivo(arrayTexto[_PARAMETRO_ARCHIVO])
 
-		} else if arrayTexto[_PARAMETRO_FUNCION] == _PARAMETRO_VER_VISITANTES {
+		} else if arrayTexto[_PARAMETRO_FUNCION] == _PARAMETRO_VER_VISITANTES && len(arrayTexto) == 3 {
 			informacionGeneral.VerVisitantes(arrayTexto[_IP_DESDE], arrayTexto[_IP_HASTA])
 
-		} else if arrayTexto[_PARAMETRO_FUNCION] == _PARAMETRO_VER_MAS_VISITADOS {
+		} else if arrayTexto[_PARAMETRO_FUNCION] == _PARAMETRO_VER_MAS_VISITADOS && len(arrayTexto) == 2 {
 			informacionGeneral.VerMasVisitados(arrayTexto[_PARAMETRO_CANTIDAD])
 
+		} else {
+			fmt.Fprintf(os.Stderr, "%s%s\n", ERROR, arrayTexto[_PARAMETRO_FUNCION])
 		}
 	}
 }
